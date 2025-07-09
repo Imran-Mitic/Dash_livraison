@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modèle utilisateur avec adresses
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  name        String?
+  isAdmin     Boolean   @default(false)
+  phone       String?
+  addresses   Address[]
+  carts       Cart[]
+  orders      Order[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  businesses  Business[] @relation("BusinessAdmins")
+}
+
+// Modèle pour les adresses
+model Address {
+  id          String   @id @default(cuid())
+  street      String
+  city        String
+  zipCode     String
+  country     String
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Modèle pour les types de commerces/services (catégories)
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  imageUrl    String?
+  businesses  Business[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// Modèle générique pour tous les commerces/services
+model Business {
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  description   String?
+  imageUrl      String?
+  isOpen        Boolean    @default(true)
+  category      Category   @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  admins        User[]     @relation("BusinessAdmins")
+  orders        Order[]    @relation("BusinessOrders")
+  menuSections  MenuSection[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// Sections du menu (uniquement pour les restaurants)
+model MenuSection {
+  id          String    @id @default(cuid())
+  name        String   
+  business    Business  @relation(fields: [businessId], references: [id])
+  businessId  String
+  menuItems   MenuItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Items du menu (uniquement pour les restaurants)
+model MenuItem {
+  id          String     @id @default(cuid())
+  name        String   
+  description String? 
+  price       Int
+  type        String? // Ex: plat, médicament, produit
+  imageUrl    String?
+  isAvailable Boolean    @default(true)
+  section     MenuSection @relation(fields: [menuSectionId], references: [id])
+  menuSectionId String
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// Panier utilisateur
+model Cart {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String    @unique
+  cartItems   CartItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Items dans le panier
+model CartItem {
+  id          String    @id @default(cuid())
+  quantity    Int       @default(1)
+  cart        Cart      @relation(fields: [cartId], references: [id])
+  cartId      String
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  menuItemId  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Commandes
+model Order {
+  id          String      @id @default(cuid())
+  user        User?       @relation(fields: [userId], references: [id])
+  userId      String?
+  phone       String
+  address     Address?    @relation(fields: [addressId], references: [id])
+  addressId   String?
+  orderItems  OrderItem[]
+  total       Int
+  status      OrderStatus @default(PENDING)
+  business    Business?   @relation("BusinessOrders", fields: [businessId], references: [id])
+  businessId  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Items commandés
+model OrderItem {
+  id          String    @id @default(cuid())
+  quantity    Int       @default(1)
+  price       Int
+  order       Order     @relation(fields: [orderId], references: [id])
+  orderId     String
+  menuItem    MenuItem? @relation(fields: [menuItemId], references: [id])
+  menuItemId  String?
+  name        String
+  createdAt   DateTime  @default(now())
+}
+
+// Statuts de commande
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
