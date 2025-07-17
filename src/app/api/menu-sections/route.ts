@@ -72,19 +72,29 @@ export async function PUT(req: Request) {
 // DELETE - Supprimer une section
 export async function DELETE(req: Request) {
   try {
-    const body = await req.json()
-    const { id } = body
+    const body = await req.json();
+    const { id } = body;
 
     if (!id) {
-      return NextResponse.json({ error: 'ID requis pour supprimer la section' }, { status: 400 })
+      return NextResponse.json({ error: 'ID requis pour supprimer la section' }, { status: 400 });
     }
 
+    // Supprimer les items associés en cascade
+    await prisma.menuItem.deleteMany({
+      where: { menuSectionId: id },
+    });
+
+    // Supprimer la section
     await prisma.menuSection.delete({
       where: { id },
-    })
+    });
 
-    return NextResponse.json({ message: 'Section supprimée avec succès' })
-  } catch (error) {
-    return NextResponse.json({ error: 'Erreur lors de la suppression de la section' }, { status: 500 })
+    return NextResponse.json({ message: 'Section supprimée avec succès' });
+  } catch (error: unknown) {
+    console.error('DELETE Error:', error); // Log détaillé pour débogage
+    return NextResponse.json(
+      { error: 'Erreur lors de la suppression de la section', details: error instanceof Error ? error.message : 'Erreur inconnue' },
+      { status: 500 }
+    );
   }
 }
